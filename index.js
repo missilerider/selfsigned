@@ -16,10 +16,15 @@ function toPositiveHex(hexString){
 
 function getAlgorithm(key) {
   switch (key) {
+    case 'sha1':
+      return forge.md.sha1.create();
+    default:
     case 'sha256':
       return forge.md.sha256.create();
-    default:
-      return forge.md.sha1.create();
+    case 'sha384':
+      return forge.md.sha384.create();
+    case 'sha512':
+      return forge.md.sha512.create();
   }
 }
 
@@ -110,7 +115,7 @@ exports.generate = function generate(attrs, options, done) {
     }
 
     if (options && options.clientCertificate) {
-      var clientkeys = forge.pki.rsa.generateKeyPair(1024);
+      var clientkeys = forge.pki.rsa.generateKeyPair(options.clientKeySize || 4096);
       var clientcert = forge.pki.createCertificate();
       clientcert.serialNumber = toPositiveHex(forge.util.bytesToHex(forge.random.getBytesSync(9)));
       clientcert.validity.notBefore = new Date();
@@ -136,7 +141,7 @@ exports.generate = function generate(attrs, options, done) {
       clientcert.publicKey = clientkeys.publicKey;
 
       // Sign client cert with root cert
-      clientcert.sign(keyPair.privateKey);
+      clientcert.sign(keyPair.privateKey, getAlgorithm(options.clientAlgorithm || 'sha256'));
 
       pem.clientprivate = forge.pki.privateKeyToPem(clientkeys.privateKey);
       pem.clientpublic = forge.pki.publicKeyToPem(clientkeys.publicKey);
@@ -168,7 +173,7 @@ exports.generate = function generate(attrs, options, done) {
     return pem;
   };
 
-  var keySize = options.keySize || 1024;
+  var keySize = options.keySize || 4096;
 
   if (done) { // async scenario
     return forge.pki.rsa.generateKeyPair({ bits: keySize }, function (err, keyPair) {
